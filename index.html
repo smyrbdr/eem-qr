@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EEM Geri Bildirim QR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Düzen: solda form seçimi ve bağlantı, sağda yansıtılacak slaydın birebir önizlemesi */
+:root {
+  --bg: #f3f5f8;
+  --panel: #ffffff;
+  --fg: #16202e;
+  --muted: #5b6676;
+  --line: #d9dee6;
+  --accent: #1f4fa3;
+  --accent-ink: #ffffff;
+  --warn: #9a5b00;
+  --warn-bg: #fff3df;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  /* Slayt her temada açık kalır; projeksiyonda QR kontrastı için */
+  --slide-bg: #ffffff;
+  --slide-fg: #10203a;
+  --slide-sub: #4a5568;
+  --slide-band: #1f4fa3;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161e; --panel: #19202b; --fg: #e6ebf2; --muted: #9aa5b4; --line: #2b3442;
+    --accent: #7fa6ef; --accent-ink: #0d1420; --warn: #f0b860; --warn-bg: #2e2516; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161e; --panel: #19202b; --fg: #e6ebf2; --muted: #9aa5b4; --line: #2b3442;
+  --accent: #7fa6ef; --accent-ink: #0d1420; --warn: #f0b860; --warn-bg: #2e2516; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+header h1 { font-family: var(--display); font-weight: 800; font-size: clamp(24px, 3.4vw, 32px); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+.grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 18px; min-width: 0; }
+.label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-weight: 500; padding: 10px 8px; border: 0; background: transparent; color: var(--fg); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button:focus-visible, .btn:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.field { display: grid; gap: 6px; }
+.field input { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); width: 100%; min-width: 0; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.note { font-size: 13px; color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 8px 10px; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { font: inherit; font-weight: 600; padding: 11px 16px; border-radius: 8px; border: 1px solid var(--accent); cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--accent); }
+.preview { display: grid; gap: 10px; min-width: 0; }
+
+/* Yansıtılacak slayt */
+.slide {
+  background: var(--slide-bg); color: var(--slide-fg); aspect-ratio: 16 / 9; width: 100%; max-width: 100%;
+  border-radius: 10px; border: 1px solid var(--line); overflow: hidden; container-type: inline-size;
+  display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; position: relative;
+}
+.slide::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 1.4cqw; background: var(--slide-band); }
+.slide .text { padding: 0 3cqw 0 6.5cqw; display: grid; gap: 2cqw; }
+.slide .eyebrow { font-family: var(--body); font-weight: 600; font-size: 1.6cqw; letter-spacing: 0.08em; text-transform: uppercase; color: var(--slide-band); }
+.slide h2 { font-family: var(--display); font-weight: 800; font-size: 5cqw; line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: -0.015em; }
+.slide .event { font-size: 2.3cqw; color: var(--slide-sub); margin: 0; font-weight: 500; }
+.slide .steps { font-size: 2cqw; color: var(--slide-sub); margin: 0; }
+.slide .qr { justify-self: center; background: #ffffff; padding: 2cqw; border-radius: 1.2cqw; box-shadow: 0 0 0 0.25cqw #e2e8f0; width: 34cqw; aspect-ratio: 1; }
+.slide .qr img, .slide .qr canvas { width: 100% !important; height: 100% !important; display: block; image-rendering: pixelated; }
+.slide .foot { position: absolute; left: 6.5cqw; bottom: 3cqw; font-size: 1.5cqw; color: var(--slide-sub); }
+
+/* Tam ekran desteklenmezse kapsayan görünüm */
+.slide.overlay { position: fixed; inset: 0; z-index: 50; border-radius: 0; border: 0; aspect-ratio: auto; width: 100vw; height: 100vh; container-type: size; }
+.slide:fullscreen { border-radius: 0; border: 0; width: 100vw; height: 100vh; aspect-ratio: auto; }
+.close { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #10203a; cursor: pointer; }
+@media (prefers-reduced-motion: no-preference) { .btn, .seg button { transition: background-color .15s, color .15s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Geri bildirim QR slaydı</h1>
+    <p>Microsoft Forms bağlantısını yapıştırın, etkinlik adını yazın ve seminer sonunda slaydı tam ekran yansıtın. Bağlantılar bu tarayıcıda hatırlanır.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="Ayarlar">
+      <div class="field">
+        <span class="label">Form</span>
+        <div class="seg" role="group" aria-label="Form seçimi">
+          <button type="button" id="tab-seminer" aria-pressed="true">Bölüm semineri</button>
+          <button type="button" id="tab-tk" aria-pressed="false">Toplumsal katkı</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="url">Forms bağlantısı</label>
+        <input id="url" type="url" inputmode="url" placeholder="https://forms.office.com/r/..." autocomplete="off">
+        <p class="note" id="example-note">Örnek bağlantı gösteriliyor. Kendi form bağlantınızı yapıştırın.</p>
+        <p class="hint" id="url-error" hidden>Bağlantı https:// ile başlamalı.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="event">Etkinlik adı (slaytta görünür)</label>
+        <input id="event" type="text" placeholder="Ör. Güç Elektroniğinde Yeni Yaklaşımlar" autocomplete="off">
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn" id="present">Tam ekran yansıt</button>
+        <button type="button" class="btn ghost" id="copy">Bağlantıyı kopyala</button>
+        <button type="button" class="btn ghost" id="download">QR kodunu indir (PNG)</button>
+      </div>
+      <p class="hint" id="copy-status" aria-live="polite"></p>
+    </section>
+
+    <section class="preview" aria-label="Slayt önizlemesi">
+      <span class="label">Önizleme</span>
+      <div class="slide" id="slide">
+        <div class="text">
+          <span class="eyebrow">İZÜ Elektrik-Elektronik Mühendisliği</span>
+          <h2 id="slide-title">Görüşleriniz bizim için önemli</h2>
+          <p class="event" id="slide-event"></p>
+          <p class="steps">Telefonunuzun kamerasıyla kodu okutun. Form yaklaşık 2 dakika sürer.</p>
+        </div>
+        <div class="qr" id="qr" role="img" aria-label="Geri bildirim formunun QR kodu"></div>
+        <span class="foot" id="slide-foot">Bölüm semineri geri bildirim formu</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function () {
+  var EXAMPLE = 'https://forms.office.com/r/ornekbaglanti';
+  var forms = {
+    seminer: { foot: 'Bölüm semineri geri bildirim formu', key: 'qr-seminer' },
+    tk: { foot: 'Toplumsal katkı etkinliği geri bildirim formu', key: 'qr-tk' }
+  };
+  var current = 'seminer';
+  var $ = function (id) { return document.getElementById(id); };
+  var urlIn = $('url'), eventIn = $('event'), qrBox = $('qr'), slide = $('slide');
+
+  function load(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function save(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  function validUrl(u) { return /^https:\/\/\S+$/.test(u); }
+
+  function draw() {
+    var u = urlIn.value.trim();
+    var useExample = !u;
+    var target = useExample ? EXAMPLE : u;
+    $('example-note').hidden = !useExample;
+    $('url-error').hidden = useExample || validUrl(u);
+    if (!useExample && !validUrl(u)) return;
+    qrBox.innerHTML = '';
+    if (window.QRCode) {
+      new QRCode(qrBox, { text: target, width: 640, height: 640, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    } else {
+      qrBox.textContent = 'QR kütüphanesi yüklenemedi.';
+    }
+  }
+
+  function setForm(name) {
+    current = name;
+    $('tab-seminer').setAttribute('aria-pressed', String(name === 'seminer'));
+    $('tab-tk').setAttribute('aria-pressed', String(name === 'tk'));
+    $('slide-foot').textContent = forms[name].foot;
+    urlIn.value = load(forms[name].key);
+    eventIn.value = load(forms[name].key + '-event');
+    syncEvent();
+    draw();
+  }
+
+  function syncEvent() {
+    var t = eventIn.value.trim();
+    $('slide-event').textContent = t;
+    $('slide-event').hidden = !t;
+  }
+
+  $('tab-seminer').addEventListener('click', function () { setForm('seminer'); });
+  $('tab-tk').addEventListener('click', function () { setForm('tk'); });
+  urlIn.addEventListener('input', function () { save(forms[current].key, urlIn.value.trim()); draw(); });
+  eventIn.addEventListener('input', function () { save(forms[current].key + '-event', eventIn.value); syncEvent(); });
+
+  var closeBtn = null;
+  function closeOverlay() {
+    slide.classList.remove('overlay');
+    if (closeBtn) { closeBtn.remove(); closeBtn = null; }
+  }
+  $('present').addEventListener('click', function () {
+    var fallback = function () {
+      slide.classList.add('overlay');
+      closeBtn = document.createElement('button');
+      closeBtn.className = 'close'; closeBtn.type = 'button'; closeBtn.textContent = 'Kapat (Esc)';
+      closeBtn.addEventListener('click', closeOverlay);
+      slide.appendChild(closeBtn);
+    };
+    try {
+      var p = slide.requestFullscreen && slide.requestFullscreen();
+      if (p && p.catch) p.catch(fallback); else if (!p) fallback();
+    } catch (e) { fallback(); }
+    try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {}
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeOverlay(); });
+
+  $('copy').addEventListener('click', function () {
+    var u = urlIn.value.trim();
+    var status = $('copy-status');
+    if (!u) { status.textContent = 'Önce kendi form bağlantınızı yapıştırın.'; return; }
+    var done = function () { status.textContent = 'Bağlantı kopyalandı.'; };
+    var fail = function () { urlIn.focus(); urlIn.select(); status.textContent = 'Kopyalanamadı; bağlantı seçildi, Ctrl+C ile kopyalayın.'; };
+    try { navigator.clipboard.writeText(u).then(done, fail); } catch (e) { fail(); }
+  });
+
+  $('download').addEventListener('click', function () {
+    var c = qrBox.querySelector('canvas');
+    if (!c) return;
+    var a = document.createElement('a');
+    a.href = c.toDataURL('image/png');
+    a.download = (current === 'seminer' ? 'seminer' : 'toplumsal-katki') + '-geri-bildirim-qr.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  setForm('seminer');
+})();
+</script>
+</body>
+</html>
