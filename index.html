@@ -1,9 +1,6 @@
-<!doctype html>
-<html lang="tr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>EEM Geri Bildirim QR</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
@@ -37,8 +34,6 @@
   --accent: #7fa6ef; --accent-ink: #0d1420; --warn: #f0b860; --warn-bg: #2e2516; color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; }
-[hidden] { display: none !important; }
 body {
   background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
   padding-block: 28px 40px;
@@ -86,9 +81,25 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
 .slide:fullscreen { border-radius: 0; border: 0; width: 100vw; height: 100vh; aspect-ratio: auto; }
 .close { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #10203a; cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) { .btn, .seg button { transition: background-color .15s, color .15s; } }
+.btn:disabled { opacity: .6; cursor: progress; }
+
+/* İndirme kapalıysa görseli elle kaydetmek için pencere */
+.shot { position: fixed; inset: 0; z-index: 60; background: rgba(10, 15, 25, .72); display: grid; place-items: center; padding: 16px; }
+.shot-box { background: var(--panel); color: var(--fg); border-radius: 10px; padding: 16px; display: grid; gap: 12px; width: min(960px, 100%); }
+.shot-box p { margin: 0; font-size: 14px; }
+.shot-box img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; display: block; }
+.shot-box .btn { justify-self: end; }
+
+/* Yazdırma: yalnızca slayt görseli, A4 yatay */
+#print-img { display: none; }
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: #fff; padding: 0; }
+  .wrap, .shot { display: none !important; }
+  #print-img { display: block; width: 100%; height: auto; }
+}
 </style>
-</head>
-<body>
+
 <div class="wrap">
   <header>
     <h1>Geri bildirim QR slaydı</h1>
@@ -119,8 +130,9 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
 
       <div class="actions">
         <button type="button" class="btn" id="present">Tam ekran yansıt</button>
+        <button type="button" class="btn ghost" id="png">Slaytı PNG indir</button>
+        <button type="button" class="btn ghost" id="print">Yazdır</button>
         <button type="button" class="btn ghost" id="copy">Bağlantıyı kopyala</button>
-        <button type="button" class="btn ghost" id="download">QR kodunu indir (PNG)</button>
       </div>
       <p class="hint" id="copy-status" aria-live="polite"></p>
     </section>
@@ -141,7 +153,17 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
   </div>
 </div>
 
+<img id="print-img" alt="">
+<div class="shot" id="shot" hidden>
+  <div class="shot-box" role="dialog" aria-modal="true" aria-labelledby="shot-msg">
+    <p id="shot-msg"></p>
+    <img id="shot-img" alt="Slayt görseli">
+    <button type="button" class="btn" id="shot-close">Kapat</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 (function () {
   var EXAMPLE = 'https://forms.office.com/r/ornekbaglanti';
@@ -214,7 +236,7 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
     } catch (e) { fallback(); }
     try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {}
   });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeOverlay(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeOverlay(); $('shot').hidden = true; } });
 
   $('copy').addEventListener('click', function () {
     var u = urlIn.value.trim();
@@ -225,17 +247,154 @@ header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
     try { navigator.clipboard.writeText(u).then(done, fail); } catch (e) { fail(); }
   });
 
-  $('download').addEventListener('click', function () {
-    var c = qrBox.querySelector('canvas');
-    if (!c) return;
-    var a = document.createElement('a');
-    a.href = c.toDataURL('image/png');
-    a.download = (current === 'seminer' ? 'seminer' : 'toplumsal-katki') + '-geri-bildirim-qr.png';
-    document.body.appendChild(a); a.click(); a.remove();
+  // Slaydı 1920x1080 tuval üzerine çiz
+  var dl = null;
+  try { if (window.claude && window.claude.use) window.claude.use('downloads').then(function (d) { dl = d; }, function () {}); } catch (e) {}
+  var DISP = '"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif';
+  var BODY = '"IBM Plex Sans", "Segoe UI", system-ui, sans-serif';
+  var msg = $('copy-status');
+
+  function fontsReady() {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    return Promise.all([
+      document.fonts.load('800 96px "Bricolage Grotesque"'),
+      document.fonts.load('600 30px "IBM Plex Sans"'),
+      document.fonts.load('500 30px "IBM Plex Sans"'),
+      document.fonts.load('400 30px "IBM Plex Sans"')
+    ]).catch(function () {});
+  }
+  function wrapLines(ctx, text, w) {
+    var out = [], line = '';
+    text.split(/\s+/).filter(Boolean).forEach(function (wd) {
+      var t = line ? line + ' ' + wd : wd;
+      if (line && ctx.measureText(t).width > w) { out.push(line); line = wd; } else line = t;
+    });
+    if (line) out.push(line);
+    return out;
+  }
+  function balanced(ctx, text, w) {
+    var n = wrapLines(ctx, text, w).length;
+    if (n < 2) return wrapLines(ctx, text, w);
+    var lo = w * 0.4, hi = w;
+    for (var i = 0; i < 14; i++) { var m = (lo + hi) / 2; if (wrapLines(ctx, text, m).length > n) lo = m; else hi = m; }
+    return wrapLines(ctx, text, hi);
+  }
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function renderSlide() {
+    return fontsReady().then(function () {
+      var W = 1920, H = 1080, u = W / 100;
+      var c = document.createElement('canvas'); c.width = W; c.height = H;
+      var x = c.getContext('2d');
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
+      x.fillStyle = '#1f4fa3'; x.fillRect(0, 0, 1.4 * u, H);
+      var colW = W * 1.15 / 2.15, left = 6.5 * u, maxW = colW - left - 3 * u;
+      var txt = function (el) { return el.hidden ? '' : el.textContent.trim(); };
+      var blocks = [
+        { t: txt(slide.querySelector('.eyebrow')).toLocaleUpperCase('tr'), s: 1.6 * u, f: '600 ', fam: BODY, c: '#1f4fa3', lh: 1.5, ls: 0.08 },
+        { t: txt($('slide-title')), s: 5 * u, f: '800 ', fam: DISP, c: '#10203a', lh: 1.05, bal: true },
+        { t: txt($('slide-event')), s: 2.3 * u, f: '500 ', fam: BODY, c: '#4a5568', lh: 1.5 },
+        { t: txt(slide.querySelector('.steps')), s: 2 * u, f: '400 ', fam: BODY, c: '#4a5568', lh: 1.5 }
+      ].filter(function (b) { return b.t; });
+      var hasLS = 'letterSpacing' in x, total = 0;
+      var setFont = function (b) { x.font = b.f + b.s + 'px ' + b.fam; if (hasLS) x.letterSpacing = (b.ls ? b.ls * b.s : 0) + 'px'; };
+      blocks.forEach(function (b) {
+        setFont(b);
+        b.lines = b.bal ? balanced(x, b.t, maxW) : wrapLines(x, b.t, maxW);
+        b.h = b.lines.length * b.s * b.lh;
+        total += b.h;
+      });
+      total += 2 * u * (blocks.length - 1);
+      var y = (H - total) / 2;
+      x.textBaseline = 'middle';
+      blocks.forEach(function (b) {
+        setFont(b); x.fillStyle = b.c;
+        b.lines.forEach(function (ln, i) { x.fillText(ln, left, y + (i + 0.5) * b.s * b.lh); });
+        y += b.h + 2 * u;
+      });
+      if (hasLS) x.letterSpacing = '0px';
+
+      var size = 34 * u, cx = colW + (W - colW) / 2, qx = cx - size / 2, qy = (H - size) / 2, ring = 0.25 * u;
+      x.fillStyle = '#e2e8f0'; rr(x, qx - ring, qy - ring, size + 2 * ring, size + 2 * ring, 1.2 * u + ring); x.fill();
+      x.fillStyle = '#ffffff'; rr(x, qx, qy, size, size, 1.2 * u); x.fill();
+      var src = qrBox.querySelector('canvas') || qrBox.querySelector('img');
+      if (src) { x.imageSmoothingEnabled = false; x.drawImage(src, qx + 2 * u, qy + 2 * u, size - 4 * u, size - 4 * u); }
+
+      var fs = 1.5 * u;
+      x.font = '400 ' + fs + 'px ' + BODY; x.fillStyle = '#4a5568';
+      x.fillText(txt($('slide-foot')), left, H - 3 * u - fs * 0.75);
+      return c;
+    });
+  }
+
+  function ready() {
+    var u = urlIn.value.trim();
+    if (!u) { msg.textContent = 'Önce kendi form bağlantınızı yapıştırın.'; return false; }
+    if (!validUrl(u)) { msg.textContent = 'Bağlantı https:// ile başlamalı.'; return false; }
+    return true;
+  }
+  function fileBase() { return 'eem-geri-bildirim-' + current; }
+  function showShot(c, text) {
+    $('shot-img').src = c.toDataURL('image/png');
+    $('shot-msg').textContent = text;
+    $('shot').hidden = false;
+    $('shot-close').focus();
+  }
+  $('shot-close').addEventListener('click', function () { $('shot').hidden = true; });
+
+  var MANUAL = 'Bu görünümde dosya indirilemiyor. Görsele sağ tıklayıp (telefonda basılı tutup) kaydedin.';
+  function saveFile(name, data, c, okText) {
+    if (!dl) { msg.textContent = ''; showShot(c, MANUAL); return Promise.resolve(); }
+    return dl.save({ filename: name, data: data }).then(function () { msg.textContent = okText; }, function (e) {
+      var code = e && e.code;
+      if (code === 'declined') msg.textContent = 'İndirme iptal edildi.';
+      else if (code === 'rate_limited') msg.textContent = 'Açık bir onay penceresi var; biraz sonra yeniden deneyin.';
+      else if (code === 'host_unavailable') msg.textContent = 'Bu uygulama dosya kaydedemiyor; sayfayı tarayıcıda açın.';
+      else { msg.textContent = ''; showShot(c, MANUAL); }
+    });
+  }
+
+  var busy = false;
+  function run(btn, job) {
+    if (busy || !ready()) return;
+    busy = true; btn.disabled = true; msg.textContent = 'Hazırlanıyor…';
+    renderSlide().then(job).catch(function () { msg.textContent = 'Görsel oluşturulamadı.'; })
+      .then(function () { busy = false; btn.disabled = false; });
+  }
+
+  $('png').addEventListener('click', function () {
+    run(this, function (c) {
+      return new Promise(function (res) { c.toBlob(res, 'image/png'); }).then(function (blob) {
+        return saveFile(fileBase() + '.png', blob, c, 'Slayt görseli kaydedildi.');
+      });
+    });
+  });
+
+  $('print').addEventListener('click', function () {
+    run(this, function (c) {
+      var url = c.toDataURL('image/png'), img = $('print-img');
+      img.src = url;
+      var dec = img.decode ? img.decode().catch(function () {}) : Promise.resolve();
+      return dec.then(function () {
+        var t = Date.now();
+        try { window.print(); } catch (e) {}
+        if (Date.now() - t > 400) { msg.textContent = ''; return; }
+        if (!window.jspdf) { msg.textContent = ''; showShot(c, 'Bu görünümde doğrudan yazdırma kapalı. Görseli kaydedip yazdırabilirsiniz.'); return; }
+        var pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        var w = 277, h = w * 9 / 16;
+        pdf.addImage(url, 'PNG', 10, (210 - h) / 2, w, h);
+        msg.textContent = 'Doğrudan yazdırma bu görünümde kapalı; yazdırmaya hazır A4 PDF hazırlanıyor.';
+        return saveFile(fileBase() + '.pdf', pdf.output('arraybuffer'), c, 'A4 PDF kaydedildi; açıp yazdırabilirsiniz.');
+      });
+    });
   });
 
   setForm('seminer');
 })();
 </script>
-</body>
-</html>
+
+</body></html>
